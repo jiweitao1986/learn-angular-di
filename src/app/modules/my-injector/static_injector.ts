@@ -392,6 +392,9 @@ function resolveToken(
 
   let value;
   if (record && !(flags & InjectFlags.SkipSelf)) {
+    
+    // 
+    
     value = record.value;
     if (value === CIRCULAR) {
       throw Error(NO_NEW_LINE + 'Circular dependency');
