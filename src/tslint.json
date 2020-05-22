@@ -12,6 +12,14 @@
       "element",
       "app",
       "kebab-case"
-    ]
+    ],
+
+
+    "no-use-before-declare": false,
+    "ban-types": false,
+    "no-bitwise": false,
+    "callable-types": false,
+    "prefer-for-of": false
+
   }
 }
