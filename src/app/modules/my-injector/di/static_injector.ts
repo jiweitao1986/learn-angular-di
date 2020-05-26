@@ -2,7 +2,7 @@ import {
   Type, IDENT, EMPTY, CIRCULAR, MULTI_PROVIDER_FN, NO_NEW_LINE, NEW_LINE,
   InjectFlags, OptionFlags, Record, DependencyRecord
 } from './types';
-import { stringify } from './utils';
+import { stringify, getClosureSafeProperty } from './utils';
 import { Injector } from './injector';
 import { NULL_INJECTOR, NullInjector} from './null_injector';
 import {
@@ -10,77 +10,13 @@ import {
   StaticProvider, SupportedProvider,
 } from './providers';
 import { InjectionToken } from './injection_token';
+import { getInjectableDef } from './injectable_def';
+import { resolveForwardRef } from './forward_ref';
 
 
 export const INJECTOR = new InjectionToken<Injector>('INJECTOR', -1 as any);
 
-
-/**
- * A type which has an `InjectorDef` static field.
- *
- * `InjectorDefTypes` can be used to configure a `StaticInjector`.
- *
- * @publicApi
- */
-export interface InjectorType<T> extends Type<T> {
-  /**
-   * Opaque type whose structure is highly version dependent. Do not rely on any properties.
-   */
-  ɵinj: never;
-}
-
-export interface ɵɵInjectableDef<T> {
-  /**
-   * Specifies that the given type belongs to a particular injector:
-   * - `InjectorType` such as `NgModule`,
-   * - `'root'` the root injector
-   * - `'any'` all injectors.
-   * - `null`, does not belong to any injector. Must be explicitly listed in the injector
-   *   `providers`.
-   */
-  providedIn: InjectorType<any>|'root'|'platform'|'any'|null;
-
-  /**
-   * The token to which this definition belongs.
-   *
-   * Note that this may not be the same as the type that the `factory` will create.
-   */
-  token: unknown;
-
-  /**
-   * Factory method to execute to create an instance of the injectable.
-   */
-  factory: (t?: Type<any>) => T;
-
-  /**
-   * In a case of no explicit injector, a location where the instance of the injectable is stored.
-   */
-  value: T|undefined;
-}
-
-/**
- * Return `def` only if it is defined directly on `type` and is not inherited from a base
- * class of `type`.
- *
- * The function `Object.hasOwnProperty` is not sufficient to distinguish this case because in older
- * browsers (e.g. IE10) static property inheritance is implemented by copying the properties.
- *
- * Instead, the definition's `token` is compared to the `type`, and if they don't match then the
- * property was not defined directly on the type itself, and was likely inherited. The definition
- * is only returned if the `type` matches the `def.token`.
- */
-function getOwnDefinition<T>(type: any, def: ɵɵInjectableDef<T>): ɵɵInjectableDef<T>|null {
-  return def && def.token === type ? def : null;
-}
-
-export const NG_PROV_DEF = getClosureSafeProperty({ɵprov: getClosureSafeProperty});
-export const NG_INJ_DEF = getClosureSafeProperty({ɵinj: getClosureSafeProperty});
-export const NG_INJECTABLE_DEF = getClosureSafeProperty({ngInjectableDef: getClosureSafeProperty});
-
-export function getInjectableDef<T>(type: any): ɵɵInjectableDef<T>|null {
-  return getOwnDefinition(type, type[NG_PROV_DEF]) ||
-      getOwnDefinition(type, type[NG_INJECTABLE_DEF]);
-}
+export const USE_VALUE =  getClosureSafeProperty<ValueProvider>({provide: String, useValue: getClosureSafeProperty});
 
 let _currentInjector: Injector|undefined|null = undefined;
 
@@ -133,7 +69,6 @@ export class StaticInjector implements Injector {
     const records = this._records;
     let record = records.get(token);
     if (record === undefined) {
-      // This means we have never seen this record, see if it is tree shakable provider.
       const injectableDef = getInjectableDef(token);
       if (injectableDef) {
         const providedIn = injectableDef && injectableDef.providedIn;
@@ -145,7 +80,6 @@ export class StaticInjector implements Injector {
         }
       }
       if (record === undefined) {
-        // Set record to null to make sure that we don't go through expensive lookup above again.
         records.set(token, null);
       }
     }
@@ -153,7 +87,7 @@ export class StaticInjector implements Injector {
     try {
       return tryResolveToken(token, record, records, this.parent, notFoundValue, flags);
     } catch (e) {
-      return catchInjectorError(e, token, 'StaticInjectorError', this.source);
+      return new Error('Token Not Found');
     } finally {
       setCurrentInjector(lastInjector);
     }
@@ -167,12 +101,17 @@ export class StaticInjector implements Injector {
   }
 }
 
+
 function multiProviderMixError(token: any) {
   return staticError('Cannot mix multi providers and regular providers', token);
 }
 
 export const INJECTOR_SCOPE = new InjectionToken<'root'|'platform'|null>('Set Injector scope.');
 
+
+/**
+ * 递归处理Provider
+ */
 function recursivelyProcessProviders(records: Map<any, Record>, provider: StaticProvider): string | null {
   let scope: string|null = null;
   if (provider) {
@@ -187,11 +126,11 @@ function recursivelyProcessProviders(records: Map<any, Record>, provider: Static
       throw staticError('Function/Class not supported', provider);
     } else if (provider && typeof provider === 'object' && provider.provide) {
 
-      // At this point we have what looks like a provider: {provide: ?, ....}
       let token = resolveForwardRef(provider.provide);
       const resolvedProvider = resolveProvider(provider);
+
+      // multi
       if (provider.multi === true) {
-        // This is a multi provider.
         let multiProvider: Record|undefined = records.get(token);
         if (multiProvider) {
           if (multiProvider.fn !== MULTI_PROVIDER_FN) {
@@ -206,10 +145,10 @@ function recursivelyProcessProviders(records: Map<any, Record>, provider: Static
             value: EMPTY
           } as Record);
         }
-        // Treat the provider as the token.
         token = provider;
         multiProvider.deps.push({token, options: OptionFlags.Default});
       }
+
       const record = records.get(token);
       if (record && record.fn === MULTI_PROVIDER_FN) {
         throw multiProviderMixError(token);
@@ -224,9 +163,6 @@ function recursivelyProcessProviders(records: Map<any, Record>, provider: Static
   }
   return scope;
 }
-
-
-export const USE_VALUE =  getClosureSafeProperty<ValueProvider>({provide: String, useValue: getClosureSafeProperty});
 
 function resolveProvider(provider: SupportedProvider): Record {
   const deps = computeDeps(provider);
@@ -315,39 +251,8 @@ return `${injectorErrorName}${source ? '(' + source + ')' : ''}[${context}]: ${
 
 
 
-export function getClosureSafeProperty<T>(objWithPropertyToExtract: T): string {
-  for (let key in objWithPropertyToExtract) {
-    if (objWithPropertyToExtract[key] === getClosureSafeProperty as any) {
-      return key;
-    }
-  }
-  throw Error('Could not find renamed property on target object.');
-}
 
-const __forward_ref__ = getClosureSafeProperty({__forward_ref__: getClosureSafeProperty});
 
-export function resolveForwardRef<T>(type: T): T {
-  return isForwardRef(type) ? type() : type;
-}
-
-export interface ForwardRefFn {
-  // tslint:disable-next-line: callable-types
-  (): any;
-}
-
-export function forwardRef(forwardRefFn: ForwardRefFn): Type<any> {
-  (forwardRefFn as any).__forward_ref__ = forwardRef;
-  (forwardRefFn as any).toString = function() {
-    return stringify(this());
-  };
-  return (forwardRefFn as any as Type<any>);
-}
-
-/** Checks whether a function is wrapped by a `forwardRef`. */
-export function isForwardRef(fn: any): fn is() => any {
-  return typeof fn === 'function' && fn.hasOwnProperty(__forward_ref__) &&
-      fn.__forward_ref__ === forwardRef;
-}
 
 export const NG_TEMP_TOKEN_PATH = 'ngTempTokenPath';
 
