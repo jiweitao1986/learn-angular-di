@@ -19,7 +19,8 @@
     "ban-types": false,
     "no-bitwise": false,
     "callable-types": false,
-    "prefer-for-of": false
-
+    "prefer-for-of": false,
+    "no-unnecessary-initializer": false,
+    "variable-name": false
   }
 }

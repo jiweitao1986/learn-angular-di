@@ -12,4 +12,6 @@ export abstract class Injector {
       flags?: InjectFlags
   ): T;
 
+  abstract get(token: any, notFoundValue?: any): any;
+
 }

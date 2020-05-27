@@ -28,24 +28,12 @@ export function setCurrentInjector(injector: Injector|null|undefined): Injector|
 
 export class StaticInjector implements Injector {
 
-  /**
-   * 父Injector
-   */
   readonly parent: Injector;
 
-  /**
-   * source
-   */
   readonly source: string|null;
 
-  /**
-   * scope
-   */
   readonly scope: string|null;
 
-  /**
-   * _records
-   */
   private _records: Map<any, Record|null>;
 
   constructor(
@@ -82,7 +70,7 @@ export class StaticInjector implements Injector {
         records.set(token, null);
       }
     }
-    let lastInjector = setCurrentInjector(this);
+    const lastInjector = setCurrentInjector(this);
     try {
       return tryResolveToken(token, record, records, this.parent, notFoundValue, flags);
     } catch (e) {
@@ -168,7 +156,7 @@ function resolveProvider(provider: SupportedProvider): Record {
   let fn: Function = IDENT;
   let value: any = EMPTY;
   let useNew: boolean = false;
-  let provide = resolveForwardRef(provider.provide);
+  const provide = resolveForwardRef(provider.provide);
 
   if (USE_VALUE in provider) {
 
@@ -222,10 +210,6 @@ function computeDeps(provider: StaticProvider): DependencyRecord[] {
 }
 
 
-
-
-
-
 function tryResolveToken(
   token: any,
   record: Record|undefined|null,
@@ -252,8 +236,6 @@ function tryResolveToken(
 }
 
 
-
-
 function resolveToken(
   token: any,
   record: Record|undefined|null,
@@ -265,16 +247,14 @@ function resolveToken(
 
   let value;
   if (record && !(flags & InjectFlags.SkipSelf)) {
-
     value = record.value;
     if (value === CIRCULAR) {
       throw Error(NO_NEW_LINE + 'Circular dependency');
     } else if (value === EMPTY) {
       record.value = CIRCULAR;
-      let obj = undefined;
-      let useNew = record.useNew;
-      let fn = record.fn;
-      let depRecords = record.deps;
+      const useNew = record.useNew;
+      const fn = record.fn;
+      const depRecords = record.deps;
       let deps = EMPTY;
       if (depRecords.length) {
         deps = [];
@@ -294,7 +274,7 @@ function resolveToken(
           );
         }
       }
-      record.value = value = useNew ? new (fn as any)(...deps) : fn.apply(obj, deps);
+      record.value = value = useNew ? new (fn as any)(...deps) : fn.apply(undefined, deps);
     }
   } else if (!(flags & InjectFlags.Self)) {
 
