@@ -14,6 +14,19 @@ export interface ɵɵInjectableDef<T> {
 }
 
 
+export function ɵɵdefineInjectable<T>(opts: {
+  token: unknown,
+  providedIn?: Type<any>|'root'|'platform'|'any'|null, factory: () => T,
+}): never {
+  return ({
+    token: opts.token,
+    providedIn: opts.providedIn as any || null,
+    factory: opts.factory,
+    value: undefined,
+  } as ɵɵInjectableDef<T>) as never;
+}
+
+
 export const NG_PROV_DEF       = getClosureSafeProperty({ɵprov: getClosureSafeProperty});
 export const NG_INJ_DEF        = getClosureSafeProperty({ɵinj: getClosureSafeProperty});
 export const NG_INJECTABLE_DEF = getClosureSafeProperty({ngInjectableDef: getClosureSafeProperty});

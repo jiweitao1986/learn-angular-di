@@ -1,8 +1,6 @@
-import {
-  Type, IDENT, EMPTY, CIRCULAR, MULTI_PROVIDER_FN, NO_NEW_LINE, NEW_LINE,
-  InjectFlags, OptionFlags, Record, DependencyRecord
-} from './types';
-import { stringify, getClosureSafeProperty } from './utils';
+import { Type,  InjectFlags, OptionFlags, Record, DependencyRecord } from './types';
+import { IDENT, EMPTY, CIRCULAR, MULTI_PROVIDER_FN, NO_NEW_LINE, NEW_LINE, NG_TEMP_TOKEN_PATH } from './consts';
+import { stringify, getClosureSafeProperty, formatError, staticError } from './utils';
 import { Injector } from './injector';
 import { NULL_INJECTOR, NullInjector} from './null_injector';
 import {
@@ -12,6 +10,7 @@ import {
 import { InjectionToken } from './injection_token';
 import { getInjectableDef } from './injectable_def';
 import { resolveForwardRef } from './forward_ref';
+import { THROW_IF_NOT_FOUND, } from './consts';
 
 
 export const INJECTOR = new InjectionToken<Injector>('INJECTOR', -1 as any);
@@ -224,37 +223,7 @@ function computeDeps(provider: StaticProvider): DependencyRecord[] {
 
 
 
-function staticError(text: string, obj: any): Error {
-  return new Error(formatError(text, obj, 'StaticInjectorError'));
-}
 
-export function formatError(
-  text: string, obj: any, injectorErrorName: string, source: string|null = null): string {
-text = text && text.charAt(0) === '\n' && text.charAt(1) == NO_NEW_LINE ? text.substr(2) : text;
-let context = stringify(obj);
-if (Array.isArray(obj)) {
-  context = obj.map(stringify).join(' -> ');
-} else if (typeof obj === 'object') {
-  let parts = <string[]>[];
-  for (let key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      let value = obj[key];
-      parts.push(
-          key + ':' + (typeof value === 'string' ? JSON.stringify(value) : stringify(value)));
-    }
-  }
-  context = `{${parts.join(', ')}}`;
-}
-return `${injectorErrorName}${source ? '(' + source + ')' : ''}[${context}]: ${
-    text.replace(NEW_LINE, '\n  ')}`;
-}
-
-
-
-
-
-
-export const NG_TEMP_TOKEN_PATH = 'ngTempTokenPath';
 
 
 function tryResolveToken(
@@ -283,8 +252,7 @@ function tryResolveToken(
 }
 
 
-const _THROW_IF_NOT_FOUND = {};
-export const THROW_IF_NOT_FOUND = _THROW_IF_NOT_FOUND;
+
 
 function resolveToken(
   token: any,
@@ -297,9 +265,7 @@ function resolveToken(
 
   let value;
   if (record && !(flags & InjectFlags.SkipSelf)) {
-    
-    // 
-    
+
     value = record.value;
     if (value === CIRCULAR) {
       throw Error(NO_NEW_LINE + 'Circular dependency');

@@ -1,12 +1,8 @@
 import { stringify } from './utils';
+import { THROW_IF_NOT_FOUND } from './consts';
 import { Injector } from './injector';
 
-const _THROW_IF_NOT_FOUND = {};
-export const THROW_IF_NOT_FOUND = _THROW_IF_NOT_FOUND;
 
-/**
- * NullInjecto定义
- */
 export class NullInjector implements Injector {
 
   get(token: any, notFoundValue: any = THROW_IF_NOT_FOUND): any {
@@ -20,7 +16,5 @@ export class NullInjector implements Injector {
 
 }
 
-/**
- * 全局NullInjector实例
- */
+
 export const NULL_INJECTOR: Injector = new NullInjector();
