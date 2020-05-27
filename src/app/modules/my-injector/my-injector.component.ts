@@ -10,7 +10,7 @@ import { ParentService, ParentDepService } from './services/index';
 export class MyInjectorComponent {
   constructor() {
 
-    this.injectFlagTest();
+    this.getInjectorTest();
   }
 
   public getTest() {
@@ -25,6 +25,14 @@ export class MyInjectorComponent {
     console.log(parentService1 === parentService2);
 
   }
+
+  public getInjectorTest() {
+    const injector = createInjector([]);
+    const injectorInstance = injector.get<Injector>(Injector);
+    console.log(injectorInstance);
+    console.log(injector === injectorInstance);
+  }
+
 
   public injectFlagTest() {
 
